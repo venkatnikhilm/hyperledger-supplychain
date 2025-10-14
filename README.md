@@ -2,21 +2,6 @@
 
 A production-ready blockchain solution for supply chain management using Hyperledger Fabric and Go smart contracts. Track products from manufacturing to delivery with transparent, immutable records.
 
-## 📋 Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
-- [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
-- [Detailed Setup](#detailed-setup)
-- [Usage Examples](#usage-examples)
-- [API Reference](#api-reference)
-- [Troubleshooting](#troubleshooting)
-- [Development](#development)
-
----
-
 ## 🎯 Overview
 
 This project implements a permissioned blockchain network for supply chain management. It allows multiple organizations to:
