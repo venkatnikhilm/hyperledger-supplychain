@@ -1,0 +1,186 @@
+# ==========================================
+# SUPPLY CHAIN CHAINCODE DEPLOYMENT COMMANDS
+# ==========================================
+
+# PREREQUISITES:
+# 1. Network must be running (docker-compose up -d)
+# 2. Execute these commands from inside the CLI container: docker exec -it cli bash
+# 3. Or use the peer CLI from your local machine with proper env variables set
+
+# ==========================================
+# STEP 1: Package the Chaincode
+# ==========================================
+peer lifecycle chaincode package supplychain.tar.gz \
+    --path /opt/gopath/src/github.com/chaincode \
+    --lang golang \
+    --label supplychain_1.0
+
+# ==========================================
+# STEP 2: Install Chaincode on Peer
+# ==========================================
+peer lifecycle chaincode install supplychain.tar.gz
+
+# After installation, you'll get a Package ID. Copy it!
+# Example output: supplychain_1.0:abc123def456...
+# Save this Package ID for the next steps
+
+# To query installed chaincodes and get the Package ID:
+peer lifecycle chaincode queryinstalled
+
+# ==========================================
+# STEP 3: Approve Chaincode for Organization
+# ==========================================
+# Replace <PACKAGE_ID> with your actual Package ID from step 2
+
+export CC_PACKAGE_ID=<PACKAGE_ID>
+
+peer lifecycle chaincode approveformyorg \
+    -o orderer.example.com:7050 \
+    --channelID supplychainchannel \
+    --name supplychain \
+    --version 1.0 \
+    --package-id $CC_PACKAGE_ID \
+    --sequence 1
+
+# ==========================================
+# STEP 4: Check Commit Readiness
+# ==========================================
+peer lifecycle chaincode checkcommitreadiness \
+    --channelID supplychainchannel \
+    --name supplychain \
+    --version 1.0 \
+    --sequence 1 \
+    --output json
+
+# ==========================================
+# STEP 5: Commit Chaincode to Channel
+# ==========================================
+peer lifecycle chaincode commit \
+    -o orderer.example.com:7050 \
+    --channelID supplychainchannel \
+    --name supplychain \
+    --version 1.0 \
+    --sequence 1 \
+    --peerAddresses peer0.org1.example.com:7051
+
+# ==========================================
+# STEP 6: Verify Chaincode is Committed
+# ==========================================
+peer lifecycle chaincode querycommitted \
+    --channelID supplychainchannel \
+    --name supplychain
+
+# ==========================================
+# STEP 7: Initialize the Ledger (Optional but Recommended)
+# ==========================================
+# This creates the initial sample products in your blockchain
+
+peer chaincode invoke \
+    -o orderer.example.com:7050 \
+    --channelID supplychainchannel \
+    -n supplychain \
+    -c '{"function":"InitializeLedger","Args":[]}'
+
+# ==========================================
+# TESTING COMMANDS - Try Your Smart Contract!
+# ==========================================
+
+# 1. Register a New Product
+peer chaincode invoke \
+    -o orderer.example.com:7050 \
+    --channelID supplychainchannel \
+    -n supplychain \
+    -c '{"function":"RegisterProduct","Args":["prod3","Wireless Headphones","AudioTech","Premium noise-cancelling headphones","Electronics"]}'
+
+# 2. Query a Specific Product
+peer chaincode query \
+    --channelID supplychainchannel \
+    -n supplychain \
+    -c '{"function":"RetrieveProduct","Args":["prod1"]}'
+
+# 3. Transfer Product Ownership
+peer chaincode invoke \
+    -o orderer.example.com:7050 \
+    --channelID supplychainchannel \
+    -n supplychain \
+    -c '{"function":"TransferOwnership","Args":["prod1","NewOwnerCompany"]}'
+
+# 4. Update Product Details
+peer chaincode invoke \
+    -o orderer.example.com:7050 \
+    --channelID supplychainchannel \
+    -n supplychain \
+    -c '{"function":"ModifyProduct","Args":["prod1","In Transit","","Updated description",""]}'
+
+# 5. Check if Product Exists
+peer chaincode query \
+    --channelID supplychainchannel \
+    -n supplychain \
+    -c '{"function":"CheckProductExistence","Args":["prod1"]}'
+
+# 6. List All Products in the Supply Chain
+peer chaincode query \
+    --channelID supplychainchannel \
+    -n supplychain \
+    -c '{"function":"ListAllProducts","Args":[]}'
+
+# ==========================================
+# UPGRADING CHAINCODE (When you make changes)
+# ==========================================
+
+# 1. Package new version
+peer lifecycle chaincode package supplychain_v2.tar.gz \
+    --path /opt/gopath/src/github.com/chaincode \
+    --lang golang \
+    --label supplychain_2.0
+
+# 2. Install new version
+peer lifecycle chaincode install supplychain_v2.tar.gz
+
+# 3. Get new Package ID
+peer lifecycle chaincode queryinstalled
+
+# 4. Approve new version (increment sequence number)
+export CC_PACKAGE_ID_V2=<NEW_PACKAGE_ID>
+
+peer lifecycle chaincode approveformyorg \
+    -o orderer.example.com:7050 \
+    --channelID supplychainchannel \
+    --name supplychain \
+    --version 2.0 \
+    --package-id $CC_PACKAGE_ID_V2 \
+    --sequence 2
+
+# 5. Commit new version
+peer lifecycle chaincode commit \
+    -o orderer.example.com:7050 \
+    --channelID supplychainchannel \
+    --name supplychain \
+    --version 2.0 \
+    --sequence 2 \
+    --peerAddresses peer0.org1.example.com:7051
+
+# ==========================================
+# USEFUL DEBUGGING COMMANDS
+# ==========================================
+
+# View peer logs
+docker logs peer0.org1.example.com
+
+# View orderer logs
+docker logs orderer.example.com
+
+# View chaincode container logs
+docker logs <chaincode_container_name>
+
+# List all chaincode containers
+docker ps -a | grep supplychain
+
+# ==========================================
+# NOTES
+# ==========================================
+# - All invoke commands modify the blockchain (write operations)
+# - All query commands only read from the blockchain (no state change)
+# - Wait a few seconds between invoke operations for transactions to be committed
+# - Product IDs must be unique when registering new products
+# - Empty string "" in ModifyProduct means "don't change this field"
